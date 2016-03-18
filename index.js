@@ -1,21 +1,28 @@
-(function () {
-    var video = document.querySelector('.camera__video'),
-        canvas = document.querySelector('.camera__canvas');
+(function(){
+    var video = document.getElementById('video');
+    var canvas = document.getElementById('canvas');
+    var filter = document.getElementById('filter');
+    var canvasContext = canvas.getContext('2d');
+
+    var filterName = 'invert';
+
+    filter.addEventListener('change', function() {
+        filterName = filter.value;
+    }, false);
 
     var getVideoStream = function (callback) {
-        navigator.getUserMedia = navigator.getUserMedia ||
-            navigator.webkitGetUserMedia ||
-            navigator.mozGetUserMedia;
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||  navigator.mozGetUserMedia;
 
         if (navigator.getUserMedia) {
             navigator.getUserMedia({video: true},
                 function (stream) {
                     video.src = window.URL.createObjectURL(stream);
-                    video.onloadedmetadata = function (e) {
-                        video.play();
+                    video.addEventListener('play', function() {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
 
                         callback();
-                    };
+                    }, false);
                 },
                 function (err) {
                     console.log("The following error occured: " + err.name);
@@ -26,64 +33,58 @@
         }
     };
 
-    var applyFilterToPixel = function (pixel) {
+    var applyFilterToPixel = function (imageData, i) {
         var filters = {
-            invert: function (pixel) {
-                pixel[0] = 255 - pixel[0];
-                pixel[1] = 255 - pixel[1];
-                pixel[2] = 255 - pixel[2];
-
-                return pixel;
+            invert: function (imageData, i) {
+                imageData[i] = 255 - imageData[i];
+                imageData[i + 1] = 255 - imageData[i + 1];
+                imageData[i + 2] = 255 - imageData[i + 2];
             },
-            grayscale: function (pixel) {
-                var r = pixel[0];
-                var g = pixel[1];
-                var b = pixel[2];
-                var v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            grayscale: function (imageData, i) {
+                var r = imageData[i];
+                var g = imageData[i + 1];
+                var b = imageData[i + 2];
 
-                pixel[0] = pixel[1] = pixel[2] = v;
+                var value = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-                return pixel;
+                imageData[i] = imageData[i + 1] = imageData[i + 2] = value;
             },
-            threshold: function (pixel) {
-                var r = pixel[0];
-                var g = pixel[1];
-                var b = pixel[2];
-                var v = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
-                pixel[0] = pixel[1] = pixel[2] = v;
+            threshold: function (imageData, i) {
+                var r = imageData[i];
+                var g = imageData[i + 1];
+                var b = imageData[i + 2];
 
-                return pixel;
+                var value = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
+
+                imageData[i] = imageData[i + 1] = imageData[i + 2] = value;
             }
         };
 
-        var filterName = document.querySelector('.controls__filter').value;
-
-        return filters[filterName](pixel);
+        filters[filterName](imageData, i);
     };
 
     var applyFilter = function () {
-        for (var x = 0; x < canvas.width; x++) {
-            for (var y = 0; y < canvas.height; y++) {
-                var pixel = canvas.getContext('2d').getImageData(x, y, 1, 1);
+        var image = canvasContext.getImageData(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
+        var imageDataLength = image.data.length;
+        var imageData = image.data;
 
-                pixel.data = applyFilterToPixel(pixel.data);
-
-                canvas.getContext('2d').putImageData(pixel, x, y);
-            }
+        for (var i = 0; i < imageDataLength; i += 4) {
+            applyFilterToPixel(imageData, i);
         }
+
+        image.data = imageData
+
+        canvasContext.putImageData(image, 0, 0);
     };
 
     var captureFrame = function () {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvasContext.drawImage(video, 0, 0);
         applyFilter();
     };
 
     getVideoStream(function () {
         captureFrame();
 
-        setInterval(captureFrame, 16);
+        setInterval(captureFrame, 33); // for 30 fps
     });
 })();

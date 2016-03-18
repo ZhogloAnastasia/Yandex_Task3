@@ -19,11 +19,11 @@ body {
     vertical-align: middle;
 }
 
-.camera__video {
-    /*visibility: hidden;*/
+#video {
+    visibility: hidden;
 }
 
-.camera__canvas {
+#canvas {
     width: 100%;
     position: absolute;
     top: 50%;
@@ -36,7 +36,7 @@ body {
     width: 100%;
 }
 
-.controls__filter {
+#filter {
     margin: 20px;
     padding: 10px;
     font-size: 2em;
